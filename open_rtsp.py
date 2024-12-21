@@ -9,7 +9,7 @@ while True:
         cv2.imshow("RTSP View", frame)
         cv2.waitKey(1)
     else:
-        print("unable to open camera")
+        print("unable to open stream")
         break
 cap.release()
 cv2.destroyAllWindows()
