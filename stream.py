@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
-
 import gi
 import cv2
 import argparse
+import warnings
 
 # import required library like Gstreamer and GstreamerRtspServer
 gi.require_version('Gst', '1.0')
@@ -82,6 +81,7 @@ parser.add_argument("--image_height", required=True, help="video frame height", 
 parser.add_argument("--port", default=8554, help="port to stream video", type=int)
 parser.add_argument("--stream_uri", default="/video_stream", help="rtsp video stream uri")
 opt = parser.parse_args()
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # initializing the threads and running the stream on loop.
 GObject.threads_init()
