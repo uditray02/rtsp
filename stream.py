@@ -14,7 +14,11 @@ from gi.repository import Gst, GstRtspServer, GObject
 class SensorFactory(GstRtspServer.RTSPMediaFactory):
     def __init__(self, **properties):
         super(SensorFactory, self).__init__(**properties)
-        self.cap = cv2.VideoCapture(opt.device_id)
+        # Use cv2.VideoCapture with the file path for pre-recorded video
+        self.cap = cv2.VideoCapture(opt.device_id)  # Now device_id refers to a video file path
+        if not self.cap.isOpened():
+            print(f"Error opening video file {opt.device_id}")
+            exit(1)
         self.number_frames = 0
         self.fps = opt.fps
         self.duration = 1 / self.fps * Gst.SECOND  # duration of a frame in nanoseconds
@@ -24,14 +28,14 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
                              '! x264enc speed-preset=ultrafast tune=zerolatency ' \
                              '! rtph264pay config-interval=1 name=pay0 pt=96' \
                              .format(opt.image_width, opt.image_height, self.fps)
-    # method to capture the video feed from the camera and push it to the
+        
+    # method to capture the video feed from the pre-recorded video and push it to the
     # streaming buffer.
     def on_need_data(self, src, length):
         if self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret:
-                # It is better to change the resolution of the camera 
-                # instead of changing the image shape as it affects the image quality.
+                # It is better to change the resolution of the frame
                 frame = cv2.resize(frame, (opt.image_width, opt.image_height), \
                     interpolation = cv2.INTER_LINEAR)
                 data = frame.tostring()
@@ -48,6 +52,7 @@ class SensorFactory(GstRtspServer.RTSPMediaFactory):
                                                                                        self.duration / Gst.SECOND))
                 if retval != Gst.FlowReturn.OK:
                     print(retval)
+    
     # attach the launch string to the override method
     def do_create_element(self, url):
         return Gst.parse_launch(self.launch_string)
@@ -70,19 +75,13 @@ class GstServer(GstRtspServer.RTSPServer):
 
 # getting the required information from the user 
 parser = argparse.ArgumentParser()
-parser.add_argument("--device_id", required=True, help="device id for the \
-                video device or video file location")
-parser.add_argument("--fps", required=True, help="fps of the camera", type = int)
-parser.add_argument("--image_width", required=True, help="video frame width", type = int)
-parser.add_argument("--image_height", required=True, help="video frame height", type = int)
-parser.add_argument("--port", default=8554, help="port to stream video", type = int)
-parser.add_argument("--stream_uri", default = "/video_stream", help="rtsp video stream uri")
+parser.add_argument("--device_id", required=True, help="path to the video file (e.g., /path/to/video.mp4)")
+parser.add_argument("--fps", required=True, help="fps of the video", type=int)
+parser.add_argument("--image_width", required=True, help="video frame width", type=int)
+parser.add_argument("--image_height", required=True, help="video frame height", type=int)
+parser.add_argument("--port", default=8554, help="port to stream video", type=int)
+parser.add_argument("--stream_uri", default="/video_stream", help="rtsp video stream uri")
 opt = parser.parse_args()
-
-try:
-    opt.device_id = int(opt.device_id)
-except ValueError:
-    pass
 
 # initializing the threads and running the stream on loop.
 GObject.threads_init()
